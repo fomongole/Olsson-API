@@ -2,8 +2,8 @@ import re
 from app.config import settings
 
 CHALLENGE_MESSAGE = (
-    "🔒 Identity Verification Required: Hello! To ensure it is Fred Omongole chatting with me, "
-    "please verify your identity by entering your Date of Birth (e.g., 16/08/2000) or your girlfriend's name."
+    "🔒 Identity Verification Required: Hello! To ensure it is Fred chatting with me, "
+    "please verify your identity by entering your Date of Birth (DD/MM/YYYY) or your girlfriend's name."
 )
 
 _DOB_PATTERNS = [
