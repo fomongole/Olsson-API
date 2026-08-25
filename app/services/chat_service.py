@@ -154,14 +154,17 @@ class ChatService:
         # ── 4. Build Complete History from Database ────────────────────────
         all_messages = await self.session_service.get_messages_for_session(session.id)
         raw_history = []
+        has_earlier_images = False
         for m in all_messages:
             if m.responded_by == "Olsson Security Gatekeeper":
                 continue
+            if m.image_url:
+                has_earlier_images = True
             # If this is the active turn and has a quoted reply, inject the quote context
             if m.reply_to_content and m.content == user_message and m.id == user_msg.id:
-                raw_history.append({"role": m.role, "content": prompt_with_quote})
+                raw_history.append({"role": m.role, "content": prompt_with_quote, "image_url": m.image_url})
             else:
-                raw_history.append({"role": m.role, "content": m.content})
+                raw_history.append({"role": m.role, "content": m.content, "image_url": m.image_url})
 
         # ── 5. Token Optimization & Sliding Window ─────────────────────────
         optimized_history, updated_summary = optimize_conversation_history(
@@ -172,9 +175,18 @@ class ChatService:
 
         system_instruction = build_system_prompt(context_summary=updated_summary)
 
-        # ── 5. Dispatch Model ──────────────────────────────────────────────
+        # If current turn has image OR earlier turns in conversation have image, prioritize vision providers
+        active_image = image_data
+        if not active_image and has_earlier_images:
+            # Find the most recent image sent in the session for vision context
+            for m in reversed(all_messages):
+                if m.image_url:
+                    active_image = m.image_url
+                    break
+
+        # ── 6. Dispatch Model ──────────────────────────────────────────────
         final_text, responded_by = await self._execute_model_dispatch(
-            optimized_history, system_instruction, image_data, model_choice
+            optimized_history, system_instruction, active_image, model_choice
         )
 
         # ── 6. Persist Assistant Response ──────────────────────────────────
