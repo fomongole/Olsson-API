@@ -55,14 +55,23 @@ class ChatService:
             responded_by = f"{resp.provider_name} ({resp.model_name})"
 
         else:
-            # ── DEFAULT 4-STAGE FAILOVER CHAIN ──────────────────────────────
-            # Groq -> Mistral -> OpenRouter -> Gemini
-            providers = [
-                self.groq_provider,
-                self.mistral_provider,
-                self.openrouter_provider,
-                self.gemini_provider,
-            ]
+            # ── DYNAMIC 4-STAGE FAILOVER CHAIN ──────────────────────────────
+            # If image is attached or referenced: Gemini (Best Vision benchmark) -> Mistral -> OpenRouter -> Groq
+            # If pure text: Groq (Fastest ultra-low latency) -> Mistral -> OpenRouter -> Gemini
+            if image_data:
+                providers = [
+                    self.gemini_provider,       # #1 Best vision accuracy & OCR reasoning
+                    self.mistral_provider,      # #2 Strong secondary vision model
+                    self.openrouter_provider,   # #3 Free router fallback
+                    self.groq_provider,
+                ]
+            else:
+                providers = [
+                    self.groq_provider,         # #1 Fastest token generation (Llama 3.3 70B/oss)
+                    self.mistral_provider,      # #2 Mistral Small
+                    self.openrouter_provider,   # #3 Free OpenRouter auto-pool
+                    self.gemini_provider,       # #4 Gemini Flash
+                ]
 
             for p in providers:
                 resp = await p.generate_response(history, system_instruction, image_data)
