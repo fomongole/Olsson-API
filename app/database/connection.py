@@ -6,7 +6,7 @@ from app.database.models import Base
 
 # Render/Neon give postgres:// or postgresql://; SQLAlchemy async requires postgresql+asyncpg://
 db_url = settings.DATABASE_URL
-is_postgres = db_url.startswith("postgres://") or db_url.startswith("postgresql://")
+is_postgres = db_url.startswith("postgres://") or db_url.startswith("postgresql://") or "asyncpg" in db_url
 
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
@@ -16,16 +16,19 @@ elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+as
 engine_kwargs = {"echo": False, "future": True}
 
 if is_postgres:
-    # asyncpg doesn't understand ?sslmode=require / ?channel_binding=require as query params
-    # (Neon appends these by default) — strip them, pass ssl via connect_args instead
-    parsed = urlparse(db_url)
-    query = parse_qs(parsed.query)
-    query.pop("sslmode", None)
-    query.pop("channel_binding", None)
-    db_url = urlunparse(parsed._replace(query=""))
+    # asyncpg expects ssl parameters via connect_args rather than query string arguments
+    # Strip ?sslmode=... / ?channel_binding=... appended by Neon connection strings
+    if "?" in db_url:
+        base_part, query_part = db_url.split("?", 1)
+        query_params = parse_qs(query_part)
+        query_params.pop("sslmode", None)
+        query_params.pop("channel_binding", None)
+        # Rebuild if other query params exist, or use clean base
+        db_url = base_part
 
-    engine_kwargs["connect_args"] = {"ssl": True}
-    engine_kwargs["pool_pre_ping"] = True  # avoids stale-connection errors after Neon/Render idle
+    engine_kwargs["connect_args"] = {"ssl": "require"}
+    engine_kwargs["pool_pre_ping"] = True  # Auto-reconnects on idle Neon/Render instances
+    engine_kwargs["pool_recycle"] = 300
 
 engine = create_async_engine(db_url, **engine_kwargs)
 
