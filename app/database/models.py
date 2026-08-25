@@ -20,10 +20,10 @@ class ChatSession(Base):
     title: Mapped[str] = mapped_column(String(255), default="New Chat")
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.datetime.now(datetime.timezone.utc)
     )
     updated_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         default=lambda: datetime.datetime.now(datetime.timezone.utc),
         onupdate=lambda: datetime.datetime.now(datetime.timezone.utc),
     )
@@ -55,7 +55,7 @@ class Message(Base):
     reply_to_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime.datetime] = mapped_column(
-        DateTime, default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True
+        DateTime(timezone=True), default=lambda: datetime.datetime.now(datetime.timezone.utc), index=True
     )
 
     session: Mapped["ChatSession"] = relationship("ChatSession", back_populates="messages")
