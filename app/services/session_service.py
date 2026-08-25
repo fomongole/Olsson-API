@@ -51,6 +51,12 @@ class SessionService:
         await self.db.flush()
         return True
 
+    async def get_messages_for_session(self, session_id: str) -> List[Message]:
+        """Directly queries the messages table to guarantee fresh chronological order."""
+        query = select(Message).where(Message.session_id == session_id).order_by(Message.created_at.asc())
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
     async def get_message_by_id(self, message_id: str) -> Optional[Message]:
         query = select(Message).where(Message.id == message_id)
         res = await self.db.execute(query)

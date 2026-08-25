@@ -142,7 +142,7 @@ class ChatService:
                 )
 
         # ── 3. Persist User Message ─────────────────────────────────────────
-        await self.session_service.append_message(
+        user_msg = await self.session_service.append_message(
             session.id,
             role="user",
             content=user_message,
@@ -151,19 +151,19 @@ class ChatService:
             reply_to_content=quoted_content,
         )
 
-        # Reload session to get complete updated history
-        session = await self.session_service.get_or_create_session(session.id)
+        # ── 4. Build Complete History from Database ────────────────────────
+        all_messages = await self.session_service.get_messages_for_session(session.id)
         raw_history = []
-        for m in session.messages:
+        for m in all_messages:
             if m.responded_by == "Olsson Security Gatekeeper":
                 continue
             # If this is the active turn and has a quoted reply, inject the quote context
-            if m.reply_to_content and m.content == user_message:
+            if m.reply_to_content and m.content == user_message and m.id == user_msg.id:
                 raw_history.append({"role": m.role, "content": prompt_with_quote})
             else:
                 raw_history.append({"role": m.role, "content": m.content})
 
-        # ── 4. Token Optimization & Sliding Window ─────────────────────────
+        # ── 5. Token Optimization & Sliding Window ─────────────────────────
         optimized_history, updated_summary = optimize_conversation_history(
             raw_history, persisted_summary=session.context_summary
         )
