@@ -53,6 +53,7 @@ app.include_router(api_router)
 
 
 @app.get("/")
+@app.head("/")
 async def root():
     return {
         "message": "Welcome to Olsson API — Personal Conversational AI Assistant",
