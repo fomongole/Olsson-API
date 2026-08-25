@@ -8,7 +8,7 @@ from app.config import settings
 class OpenRouterProvider(BaseAIProvider):
     def __init__(self, api_key: Optional[str] = None, model_name: Optional[str] = None):
         self._api_key = api_key or settings.OPENROUTER_API_KEY
-        self._model_name = model_name or settings.OPENROUTER_MODEL
+        self._custom_model_name = model_name
         self._client: Optional[AsyncOpenAI] = None
 
     @property
@@ -17,13 +17,13 @@ class OpenRouterProvider(BaseAIProvider):
 
     @property
     def model_name(self) -> str:
-        return self._model_name
+        return self._custom_model_name or settings.OPENROUTER_MODEL
 
     @property
     def client(self) -> AsyncOpenAI:
         if self._client is None:
             self._client = AsyncOpenAI(
-                api_key=self._api_key,
+                api_key=self._api_key or settings.OPENROUTER_API_KEY,
                 base_url="https://openrouter.ai/api/v1",
                 timeout=settings.REQUEST_TIMEOUT_SECONDS,
                 default_headers={
